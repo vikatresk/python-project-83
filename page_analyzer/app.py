@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 import os
 
 app = Flask(__name__)
@@ -7,7 +7,7 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 @app.route('/')
 def index():
-   return "Hello there, it's the first Flask app"
+   return render_template('index.html', )
 
 if __name__ == '__main__':
     app.run(debug=True)
