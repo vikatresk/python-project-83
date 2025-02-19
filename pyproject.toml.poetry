@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "hexlet-code"
+version = "0.1.0"
+description = "Third project 'Page Analyzer'"
+authors = ["Victoria Treskova <vikatresk@yandex.ru>"]
+readme = "README.md"
+packages = [
+    { include = "page_analyzer" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.8.1"
+flask = "^3.0.3"
+flake8 = "^7.1.1"
+python-dotenv = "^1.0.1"
+beautifulsoup4 = "^4.12.3"
+requests = "^2.32.3"
+psycopg2-binary = "^2.9.10"
+pycparser = "^2.22"
+validators = "^0.34.0"
+uv = "^0.6.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
