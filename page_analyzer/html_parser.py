@@ -8,13 +8,14 @@ def truncate(text):
 def parse_page(content):
     soup = BeautifulSoup(content, 'html.parser')
 
-    h1 = soup.find('h1')
-    title = soup.find('title')
-    description = soup.find('meta', attrs={'name': 'description'})
+    h1_tag = soup.find('h1')
+    h1_content = h1_tag.text if h1_tag else None
 
-    return {
-        'h1': h1.text[:255] if h1 else '',
-        'title': title.text[:255] if title else '',
-        'description': (description.get('content', '')[:255]
-                        if description else '')
-    }
+    title_tag = soup.title
+    title_text = title_tag.text if title_tag else None
+
+    description_tag = soup.find('meta', attrs={'name': 'description'})
+    description_content = description_tag['content'] \
+        if description_tag else None
+
+    return h1_content, title_text, description_content

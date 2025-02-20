@@ -4,18 +4,14 @@
     {% include 'includes/head.html' %}
   </head>
   <body class="min-vh-100 d-flex flex-column">
-  <header class="flex-shrink-0">
-    {% include 'includes/nav.html' %}
-  </header>
-  {% for category, messages in get_flashed_messages(True) %}
-  <div class="alert {{ category }}" role="alert">{{ messages }}</div>
-  {% endfor %}
+    <header class="flex-shrink-0">
+      {% include 'includes/nav.html' %}
+    </header>
+      {% include 'includes/fl_messages.html' %}
   
-
   <main class="flex-grow-1">
     <div class="container-lg mt-3">
-        {% block main %}
-        {% endblock %}
+        {% block content %}{% endblock %}
     </div>
   </main>
   </body>
