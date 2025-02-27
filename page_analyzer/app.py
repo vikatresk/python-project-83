@@ -10,11 +10,6 @@ from flask import render_template
 import requests
 from .config import config
 from .tools import validate_url, normalize
-from page_analyzer.exceptions import (
-    InvalidURLError,
-    URLTooLongError,
-    URLValidationError,
-)
 from .html_parser import parse_page
 from page_analyzer import db as db
 
@@ -47,23 +42,16 @@ def show_url_page(url_id):
     return render_template("urls/show.html", url=url, checks=checks)
 
 
-@app.post("/urls")
+@app.post('/urls')
 def add_url():
-    url = request.form.get("url")
-    normal_url = normalize(url)
+    input_url = request.form['url']
+    is_valid, error_message = validate_url(input_url)
 
-    try:
-        validate_url(normal_url)
-    except URLTooLongError:
-        flash("URL превышает 255 символов", "danger")
-        return render_template("index.html", url=normal_url), 422
-    except InvalidURLError:
-        flash("Некорректный URL", "danger")
-        return render_template("index.html", url=normal_url), 422
-    except URLValidationError as e:
-        flash(str(e), "danger")
-        return render_template("index.html", url=normal_url), 422
+    if not is_valid:
+        flash(error_message, 'danger')
+        return render_template('index.html',), 422
 
+    normal_url = normalize(input_url)
     with db.get_connection(db_url) as conn:
         url_info = db.check_url_exists(conn, normal_url)
 
