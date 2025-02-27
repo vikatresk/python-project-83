@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 
 
-MAX_LENGTH=255
+MAX_LENGTH = 255
 
 
 def parse_page(txt_response, status_code):
