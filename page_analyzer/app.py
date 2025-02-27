@@ -1,27 +1,27 @@
 from flask import (
     Flask,
     request,
+    abort,
     redirect,
     url_for,
     flash
 )
 from flask import render_template
 import requests
-from .config import SECRET_KEY
+from .config import config
 from .tools import validate_url, normalize
-from .html_parser import parse_page
-from .db import (
-    fetch_url_by_name,
-    insert_url,
-    fetch_all_records,
-    fetch_data_url,
-    fetch_url_name_by_id,
-    perform_url_check
+from page_analyzer.exceptions import (
+    InvalidURLError,
+    URLTooLongError,
+    URLValidationError,
 )
+from .html_parser import parse_page
+from page_analyzer import db as db
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = SECRET_KEY
+app.secret_key = config.SECRET_KEY
+db_url = config.DATABASE_URL
 
 
 @app.route('/')
@@ -29,70 +29,72 @@ def index():
     return render_template('index.html', )
 
 
-@app.post('/urls')
+@app.get("/urls")
+def show_urls_page():
+    with db.get_connection(db_url) as conn:
+        urls_check = db.get_urls_with_latest_check(conn)
+        return render_template("urls/index.html", urls_check=urls_check)
+
+
+@app.get("/urls/<url_id>")
+def show_url_page(url_id):
+    with db.get_connection(db_url) as conn:
+        url = db.get_url(conn, int(url_id))
+        if not url:
+            abort(404)
+        checks = db.get_url_checks(conn, int(url_id))
+
+    return render_template("urls/show.html", url=url, checks=checks)
+
+
+@app.post("/urls")
 def add_url():
-    input_url = request.form['url']
-    is_valid, error_message = validate_url(input_url)
+    url = request.form.get("url")
+    normal_url = normalize(url)
 
-    if not is_valid:
-        flash(error_message, 'danger')
-        return render_template('index.html',), 422
-
-    base_url = normalize(input_url)
-    existing_record = fetch_url_by_name(base_url)
-
-    if existing_record:
-        url_id = existing_record[0]
-        flash('Страница уже существует', 'info')
-    else:
-        url_id = insert_url(base_url)
-        flash('Страница успешно добавлена', 'success')
-
-    return redirect(url_for('view_url', id=url_id))
-
-
-@app.get('/urls')
-def show_urls():
-    all_records = fetch_all_records()
-    return render_template('urls.html', records=all_records)
-
-
-@app.route('/urls/<int:id>', methods=['GET'])
-def view_url(id):
-    id, name, formatted_date, all_checks = fetch_data_url(id)
-    return render_template('url_page.html',
-                           id=id,
-                           name=name,
-                           created_at=formatted_date,
-                           checks=all_checks,
-                           )
-
-
-@app.post('/urls/<int:id>/checks')
-def check_url(id):
-    url_name = fetch_url_name_by_id(id)
     try:
-        response = requests.get(url_name)
-        response.raise_for_status()
-    except requests.HTTPError:
-        flash('Произошла ошибка при проверке', 'danger')
+        validate_url(normal_url)
+    except URLTooLongError:
+        flash("URL превышает 255 символов", "danger")
+        return render_template("index.html", url=normal_url), 422
+    except InvalidURLError:
+        flash("Некорректный URL", "danger")
+        return render_template("index.html", url=normal_url), 422
+    except URLValidationError as e:
+        flash(str(e), "danger")
+        return render_template("index.html", url=normal_url), 422
+
+    with db.get_connection(db_url) as conn:
+        url_info = db.check_url_exists(conn, normal_url)
+
+    if url_info:
+        flash("Страница уже существует", "info")
+        url_id = url_info.id
     else:
-        status_code = response.status_code
-        h1_content, title_text, description_content = (
-            parse_page(response.content)
-        )
+        flash("Страница успешно добавлена", "success")
+        with db.get_connection(db_url) as conn:
+            url_id = db.insert_url(conn, normal_url)
 
-        data = {
-            "id": id,
-            "status_code": status_code,
-            "h1_content": h1_content,
-            "title_text": title_text,
-            "description_content": description_content
-        }
+    return redirect(url_for("show_url_page", url_id=url_id))
 
-        perform_url_check(data)
-        flash('Страница успешно проверена', 'success')
-    return redirect(url_for('view_url', id=id))
+
+@app.post("/urls/<url_id>/check")
+def check_url_page(url_id):
+    with db.get_connection(db_url) as conn:
+        url = db.get_url(conn, int(url_id))
+    try:
+        response = requests.get(url.name, timeout=50)
+        response.raise_for_status()
+    except requests.RequestException:
+        flash("Произошла ошибка при проверке", "danger")
+        return redirect(url_for("show_url_page", url_id=url_id))
+
+    url_info = parse_page(response.text, response.status_code)
+    flash("Страница успешно проверена", "success")
+    with db.get_connection(db_url) as conn:
+        db.insert_check(conn, int(url_id), url_info)
+
+    return redirect(url_for("show_url_page", url_id=url_id))
 
 
 @app.errorhandler(404)

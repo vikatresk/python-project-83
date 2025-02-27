@@ -1,21 +1,21 @@
 from bs4 import BeautifulSoup
 
 
-def truncate(text):
-    return f'{text[:255]}...' if len(text) > 255 else text
+MAX_LENGTH=255
 
 
-def parse_page(content):
-    soup = BeautifulSoup(content, 'html.parser')
+def parse_page(txt_response, status_code):
+    soup = BeautifulSoup(txt_response, "html.parser")
+    h1_tag = soup.find("h1")
+    title_tag = soup.find("title")
+    description_tag = soup.find("meta", attrs={"name": "description"})
 
-    h1_tag = soup.find('h1')
-    h1_content = h1_tag.text if h1_tag else None
-
-    title_tag = soup.title
-    title_text = title_tag.text if title_tag else None
-
-    description_tag = soup.find('meta', attrs={'name': 'description'})
-    description_content = description_tag['content'] \
-        if description_tag else None
-
-    return h1_content, title_text, description_content
+    return {
+        "h1": h1_tag.text[:MAX_LENGTH] if h1_tag else "",
+        "title": title_tag.text[:MAX_LENGTH] if title_tag else "",
+        "status_code": status_code,
+        "description": (
+            description_tag.get("content", "")[:MAX_LENGTH]
+            if description_tag else ""
+        ),
+    }
