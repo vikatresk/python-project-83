@@ -24,6 +24,7 @@ To view the live Page Analyzer application, [click here](https://python-project-
 2. Create .env file and set SECRET_KEY and DATABASE_URL as in 'env.example'
 
 Then follow these commands:
+
 3. Install dependencies
 
 ```make install```
