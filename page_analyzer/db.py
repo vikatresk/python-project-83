@@ -12,21 +12,6 @@ def close(conn):
     conn.close()
 
 
-@contextmanager
-def get_connection(db_url):
-    conn = None
-    try:
-        conn = connect_db(db_url)
-        yield conn
-        conn.commit()
-    except Exception as err:
-        conn.rollback()
-        raise err
-    finally:
-        if conn:
-            conn.close()
-
-
 def get_url(conn, url_id):
     with conn.cursor(cursor_factory=NamedTupleCursor) as cur:
         query = "SELECT * FROM urls WHERE id = (%s);"
@@ -43,7 +28,7 @@ def insert_url(conn, url):
     return result.id
 
 
-def check_url_exists(conn, url):
+def get_url_by_name(conn, url):
     with conn.cursor(cursor_factory=NamedTupleCursor) as cur:
         query = "SELECT * FROM urls WHERE name = (%s);"
         cur.execute(query, (url,))
@@ -51,10 +36,7 @@ def check_url_exists(conn, url):
     return result
 
 
-def get_url_checks(
-    conn,
-    url_id,
-):
+def get_url_checks(conn, url_id):
     with conn.cursor(cursor_factory=NamedTupleCursor) as cur:
         query = "SELECT * FROM url_checks WHERE url_id = (%s) ORDER BY id DESC;"
         cur.execute(query, (url_id,))
@@ -62,7 +44,7 @@ def get_url_checks(
     return result
 
 
-def insert_check(conn, url_id, url_info):
+def insert_url_check(conn, url_id, url_info):
     url_info_data = (
         url_id,
         url_info["status_code"],
@@ -85,17 +67,25 @@ def insert_check(conn, url_id, url_info):
 
 def get_urls_with_latest_check(conn):
     with conn.cursor(cursor_factory=NamedTupleCursor) as cur:
-        query = (
-            "SELECT DISTINCT ON(urls.id) "
-            "urls.id AS id, "
-            "urls.name AS name, "
-            "url_checks.created_at AS created_at, "
-            "url_checks.status_code AS status_code, "
-            "url_checks.url_id AS url_id "
-            "FROM urls "
-            "LEFT JOIN url_checks ON urls.id = url_checks.url_id "
-            "ORDER BY urls.id DESC, url_checks.url_id DESC;"
+        cur.execute("SELECT id, name FROM urls ORDER BY id DESC;")
+        urls = cur.fetchall()
+
+        cur.execute(
+            "SELECT url_id, created_at, status_code FROM url_checks "
+            "WHERE url_id IN (SELECT id FROM urls) "
+            "ORDER BY created_at DESC;"
         )
-        cur.execute(query)
-        result = cur.fetchall()
-    return result
+        checks = {check.url_id: {
+            'created_at': check.created_at,
+            'status_code': check.status_code
+            } for check in cur.fetchall()}
+
+    return [
+        {
+            'id': url.id,
+            'name': url.name,
+            'created_at': checks.get(url.id, {}).get('created_at'),
+            'status_code': checks.get(url.id, {}).get('status_code')
+        }
+        for url in urls
+    ]

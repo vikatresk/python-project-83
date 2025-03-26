@@ -6,13 +6,17 @@ readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "beautifulsoup4>=4.13.3",
-    "flake8>=5.0.4",
     "flask>=3.0.3",
     "gunicorn>=23.0.0",
     "psycopg2-binary>=2.9.10",
     "pycparser>=2.22",
     "python-dotenv>=1.0.1",
     "requests>=2.32.3",
-    "ruff>=0.9.6",
     "validators>=0.34.0",
+]
+
+[dependency-groups]
+dev = [
+    "flake8>=5.0.4",
+    "ruff>=0.9.9",
 ]

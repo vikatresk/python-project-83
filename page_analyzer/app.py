@@ -8,15 +8,17 @@ from flask import (
 )
 from flask import render_template
 import requests
-from .config import config
 from .tools import validate_url, normalize
 from .html_parser import parse_page
 from page_analyzer import db as db
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = config.SECRET_KEY
-db_url = config.DATABASE_URL
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+app.config["DATABASE_URL"] = os.getenv("DATABASE_URL")
 
 
 @app.route('/')
@@ -26,63 +28,59 @@ def index():
 
 @app.get("/urls")
 def show_urls_page():
-    with db.get_connection(db_url) as conn:
+    with db.connect_db(app.config["DATABASE_URL"]) as conn:
         urls_check = db.get_urls_with_latest_check(conn)
         return render_template("urls/index.html", urls_check=urls_check)
 
 
-@app.get("/urls/<url_id>")
+@app.get("/urls/<int:url_id>")
 def show_url_page(url_id):
-    with db.get_connection(db_url) as conn:
-        url = db.get_url(conn, int(url_id))
+    with db.connect_db(app.config["DATABASE_URL"]) as conn:
+        url = db.get_url(conn, url_id)
         if not url:
             abort(404)
-        checks = db.get_url_checks(conn, int(url_id))
+        checks = db.get_url_checks(conn, url_id)
 
     return render_template("urls/show.html", url=url, checks=checks)
 
 
 @app.post('/urls')
 def add_url():
-    input_url = request.form['url']
-    is_valid, error_message = validate_url(input_url)
+    with db.connect_db(app.config["DATABASE_URL"]) as conn:
+        input_url = request.form['url']
+        is_valid, error_message = validate_url(input_url)
 
-    if not is_valid:
-        flash(error_message, 'danger')
-        return render_template('index.html',), 422
+        if not is_valid:
+            flash(error_message, 'danger')
+            return render_template('index.html',), 422
 
-    normal_url = normalize(input_url)
-    with db.get_connection(db_url) as conn:
-        url_info = db.check_url_exists(conn, normal_url)
+        normal_url = normalize(input_url)
+        url_info = db.get_url_by_name(conn, normal_url)
 
-    if url_info:
-        flash("Страница уже существует", "info")
-        url_id = url_info.id
-    else:
-        flash("Страница успешно добавлена", "success")
-        with db.get_connection(db_url) as conn:
+        if url_info:
+            flash("Страница уже существует", "info")
+            url_id = url_info.id
+
+        else:
             url_id = db.insert_url(conn, normal_url)
-
-    return redirect(url_for("show_url_page", url_id=url_id))
-
-
-@app.post("/urls/<url_id>/check")
-def check_url_page(url_id):
-    with db.get_connection(db_url) as conn:
-        url = db.get_url(conn, int(url_id))
-    try:
-        response = requests.get(url.name, timeout=50)
-        response.raise_for_status()
-    except requests.RequestException:
-        flash("Произошла ошибка при проверке", "danger")
+            flash("Страница успешно добавлена", "success")
+        
         return redirect(url_for("show_url_page", url_id=url_id))
 
-    url_info = parse_page(response.text, response.status_code)
-    flash("Страница успешно проверена", "success")
-    with db.get_connection(db_url) as conn:
-        db.insert_check(conn, int(url_id), url_info)
 
-    return redirect(url_for("show_url_page", url_id=url_id))
+@app.post("/urls/<int:url_id>/check")
+def check_url_page(url_id):
+    with db.connect_db(app.config["DATABASE_URL"]) as conn:
+        url = db.get_url(conn, url_id)
+        try:
+            response = requests.get(url.name, timeout=50)
+            response.raise_for_status()
+            url_info = parse_page(response.text, response.status_code)
+            db.insert_url_check(conn, url_id, url_info)
+            flash("Страница успешно проверена", "success")
+        except requests.RequestException:
+            flash("Произошла ошибка при проверке", "danger")
+        return redirect(url_for("show_url_page", url_id=url_id))
 
 
 @app.errorhandler(404)
