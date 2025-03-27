@@ -69,10 +69,11 @@ def get_urls_with_latest_check(conn):
         urls = cur.fetchall()
 
         cur.execute(
-            "SELECT url_id, created_at, status_code FROM url_checks "
+            "SELECT DISTINCT ON (url_id) url_id, created_at, status_code FROM url_checks "
             "WHERE url_id IN (SELECT id FROM urls) "
-            "ORDER BY created_at DESC;"
+            "ORDER BY url_id DESC;"
         )
+
         checks = {check.url_id: {
             'created_at': check.created_at,
             'status_code': check.status_code

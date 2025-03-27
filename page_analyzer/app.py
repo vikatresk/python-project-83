@@ -31,6 +31,7 @@ def show_urls_page():
     with db.connect_db(app.config["DATABASE_URL"]) as conn:
         urls_check = db.get_urls_with_latest_check(conn)
         return render_template("urls/index.html", urls_check=urls_check)
+    conn.close()
 
 
 @app.get("/urls/<int:url_id>")
@@ -40,8 +41,8 @@ def show_url_page(url_id):
         if not url:
             abort(404)
         checks = db.get_url_checks(conn, url_id)
-
-    return render_template("urls/show.html", url=url, checks=checks)
+        return render_template("urls/show.html", url=url, checks=checks)
+    conn.close()
 
 
 @app.post('/urls')
@@ -66,6 +67,7 @@ def add_url():
             flash("Страница успешно добавлена", "success")
         
         return redirect(url_for("show_url_page", url_id=url_id))
+    conn.close()
 
 
 @app.post("/urls/<int:url_id>/check")
@@ -81,6 +83,7 @@ def check_url_page(url_id):
         except requests.RequestException:
             flash("Произошла ошибка при проверке", "danger")
         return redirect(url_for("show_url_page", url_id=url_id))
+    conn.close()
 
 
 @app.errorhandler(404)
