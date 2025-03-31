@@ -25,17 +25,9 @@ To view the live Page Analyzer application, [click here](https://python-project-
 
 Then follow these commands:
 
-3. Install dependencies
+3. Install dependencies, run development server, run production server
 
 ```bash
-make
-
-4. Run development server
-
-```bash
+make install
 make dev
-
-5. Run production server
-
-```bash
 make start
