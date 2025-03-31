@@ -15,6 +15,7 @@ def get_url(conn, url_id):
         query = "SELECT * FROM urls WHERE id = (%s);"
         cur.execute(query, (url_id,))
         result = cur.fetchone()
+
     return result
 
 
@@ -23,6 +24,7 @@ def insert_url(conn, url):
         query = "INSERT INTO urls (name) VALUES (%s) RETURNING id;"
         cur.execute(query, (url,))
         result = cur.fetchone()
+
     return result.id
 
 
@@ -62,7 +64,6 @@ def insert_url_check(conn, url_id, url_info):
             """
         cur.execute(query, url_info_data)
 
-
 def get_urls_with_latest_check(conn):
     with conn.cursor(cursor_factory=NamedTupleCursor) as cur:
         cur.execute("SELECT id, name FROM urls ORDER BY id DESC;")
@@ -81,12 +82,12 @@ def get_urls_with_latest_check(conn):
             'status_code': check.status_code
             } for check in cur.fetchall()}
 
-    return [
-        {
-            'id': url.id,
-            'name': url.name,
-            'created_at': checks.get(url.id, {}).get('created_at'),
-            'status_code': checks.get(url.id, {}).get('status_code')
-        }
-        for url in urls
-    ]
+        return [
+            {
+                'id': url.id,
+                'name': url.name,
+                'created_at': checks.get(url.id, {}).get('created_at'),
+                'status_code': checks.get(url.id, {}).get('status_code')
+            }
+            for url in urls
+        ]

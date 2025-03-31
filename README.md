@@ -27,12 +27,15 @@ Then follow these commands:
 
 3. Install dependencies
 
-```make install```
+```bash
+make
 
 4. Run development server
 
-```make dev```
+```bash
+make dev
 
 5. Run production server
 
-```make start```
+```bash
+make start
