@@ -32,8 +32,7 @@ def show_urls_page():
         urls_check = db.get_urls_with_latest_check(conn)
         result = render_template("urls/index.html", urls_check=urls_check)
     db.close(conn)
-    return result
-    
+    return result    
 
 
 @app.get("/urls/<int:url_id>")
@@ -72,7 +71,6 @@ def add_url():
         result = redirect(url_for("show_url_page", url_id=url_id))
     db.close(conn)
     return result
-    
 
 
 @app.post("/urls/<int:url_id>/check")
@@ -91,7 +89,6 @@ def check_url_page(url_id):
     db.close(conn)
     return result
     
-
 
 @app.errorhandler(404)
 def page_not_found(e):

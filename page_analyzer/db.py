@@ -15,7 +15,6 @@ def get_url(conn, url_id):
         query = "SELECT * FROM urls WHERE id = (%s);"
         cur.execute(query, (url_id,))
         result = cur.fetchone()
-
     return result
 
 
@@ -24,7 +23,6 @@ def insert_url(conn, url):
         query = "INSERT INTO urls (name) VALUES (%s) RETURNING id;"
         cur.execute(query, (url,))
         result = cur.fetchone()
-
     return result.id
 
 
@@ -63,6 +61,7 @@ def insert_url_check(conn, url_id, url_info):
             VALUES (%s, %s, %s, %s, %s);
             """
         cur.execute(query, url_info_data)
+
 
 def get_urls_with_latest_check(conn):
     with conn.cursor(cursor_factory=NamedTupleCursor) as cur:
